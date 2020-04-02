@@ -1,0 +1,15 @@
+#!/bin/bash
+
+layers=${1:-target/layers}
+platform=${2:-target/platform}
+plan=${3:-target/plan.toml}
+
+echo "Building "$*
+echo Platform: $platform
+echo Layers: $layers
+echo Plan: $plan
+echo $PATH
+
+find /layers/org.cloudfoundry.openjdk
+
+env
