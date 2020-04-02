@@ -45,12 +45,8 @@ if [[ ! -d $HOME/.m2 ]]; then
 fi
 
 ext_layer_dir=${layers_dir}/ext
-mkdir -p "${ext_layer_dir}"/env
 cat > "${ext_layer_dir}.toml" << EOF
 launch = true
-EOF
-cat > ${ext_layer_dir}/env/MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE << EOF
-*
 EOF
 if [[ ! -f META-INF/thin-ext.properties ]]; then
     cat > META-INF/thin-ext.properties << EOF
@@ -70,6 +66,6 @@ done
 cat > "${layers_dir}/launch.toml" << EOF
 [[processes]]
   type = "ext"
-  command = "java -cp $CLASSPATH:${ext_layer_dir}/lib/* $JAVA_OPTS com.example.demo.DemoApplication"
+  command = "java -cp $CLASSPATH:${ext_layer_dir}/lib/* $JAVA_OPTS com.example.demo.DemoApplication --management.endpoints.web.exposure.include=*"
   direct = false
 EOF
