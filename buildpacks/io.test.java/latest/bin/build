@@ -44,7 +44,12 @@ if [[ ! -d $HOME/.m2 ]]; then
     ln -s ${m2_layer_dir} $HOME/.m2
 fi
 
-cat > ${thin_layer_dir}/env/MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE << EOF
+ext_layer_dir=${layers_dir}/ext
+mkdir -p "${ext_layer_dir}"/env
+cat > "${ext_layer_dir}.toml" << EOF
+launch = true
+EOF
+cat > ${ext_layer_dir}/env/MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE << EOF
 *
 EOF
 if [[ ! -f META-INF/thin-ext.properties ]]; then
@@ -57,14 +62,14 @@ fi
 cpparent=`java -jar ${thin_layer_dir}/thin.jar --thin.archive=. --thin.classpath`
 cpchild=`java -jar ${thin_layer_dir}/thin.jar --thin.archive=. --thin.classpath --thin.parent=. --thin.profile=ext`
 
-mkdir -p ext
+mkdir -p ${ext_layer_dir}/lib
 for f in `echo ${cpchild#${cpparent}*} | tr ':' ' '`; do
-  cp $f ext;
+  cp $f ${ext_layer_dir}/lib
 done
 
 cat > "${layers_dir}/launch.toml" << EOF
 [[processes]]
   type = "ext"
-  command = "java -cp $CLASSPATH:ext/* $JAVA_OPTS com.example.demo.DemoApplication --management.endpoints.web.exposure.include=*"
+  command = "java -cp $CLASSPATH:${ext_layer_dir}/lib/* $JAVA_OPTS com.example.demo.DemoApplication"
   direct = false
 EOF
