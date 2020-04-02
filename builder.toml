@@ -23,6 +23,6 @@ group = [
 version = "0.7.2"
 
 [stack]
-id          = "io.buildpacks.stacks.bionic"
-build-image = "cloudfoundry/build:base-cnb"
-run-image   = "cloudfoundry/run:base-cnb"
+id          = "org.cloudfoundry.stacks.cflinuxfs3"
+build-image = "cloudfoundry/build:full-cnb"
+run-image   = "cloudfoundry/run:full-cnb"

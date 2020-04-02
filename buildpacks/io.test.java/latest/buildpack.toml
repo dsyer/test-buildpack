@@ -21,5 +21,5 @@ name = "Test Buildpack"
 version = "latest"
 
 [[stacks]]
-id = "io.buildpacks.stacks.bionic"
+id = "org.cloudfoundry.stacks.cflinuxfs3"
 

@@ -1,15 +1,70 @@
 #!/bin/bash
+set -eo pipefail
 
-layers=${1:-target/layers}
-platform=${2:-target/platform}
-plan=${3:-target/plan.toml}
+layers_dir=${1:-target/layers}
+platform_dir=${2:-target/platform}
+plan_path=${3:-target/plan.toml}
 
 echo "Building "$*
 echo Platform: $platform
-echo Layers: $layers
+echo Layers: $layers_dir
 echo Plan: $plan
 echo $PATH
 
-find /layers/org.cloudfoundry.openjdk
+thin_version="1.0.23.RELEASE"
+thin_url="https://repo1.maven.org/maven2/org/springframework/boot/experimental/spring-boot-thin-launcher/${thin_version}/spring-boot-thin-launcher-${thin_version}-exec.jar"
 
-env
+thin_layer_dir=${layers_dir}/thin
+if [[ -f ${thin_layer_dir}.toml ]] && grep -q url ${thin_layer_dir}.toml; then
+    cached_thin_url=$(cat "${thin_layer_dir}.toml" | grep url | sed -e 's/.*= //' -e 's/"//g')
+fi
+
+if [[ ${thin_url} != ${cached_thin_url} ]]; then
+  rm -rf "${thin_layer_dir}"
+  mkdir -p "${thin_layer_dir}"/env
+  echo Downloading thin.jar
+  wget -q -O - "$thin_url" > ${thin_layer_dir}/thin.jar
+
+  cat > "${thin_layer_dir}.toml" << EOF
+build = true
+cache = true
+
+[metadata]
+version = "${thin_version}"
+url = "${thin_url}"
+EOF
+fi
+
+if [[ ! -d $HOME/.m2 ]]; then
+    m2_layer_dir="${layers_dir}/maven_m2"
+    if [[ ! -d ${m2_layer_dir} ]]; then
+        mkdir -p ${m2_layer_dir}
+        echo "cache = true" > ${m2_layer_dir}.toml
+    fi
+    ln -s ${m2_layer_dir} $HOME/.m2
+fi
+
+cat > ${thin_layer_dir}/env/MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE << EOF
+*
+EOF
+if [[ ! -f META-INF/thin-ext.properties ]]; then
+    cat > META-INF/thin-ext.properties << EOF
+dependencies.spring-boot-actuator=org.springframework.boot:spring-boot-starter-actuator
+dependencies.prometheus=io.micrometer:micrometer-registry-prometheus
+EOF
+fi
+
+cpparent=`java -jar ${thin_layer_dir}/thin.jar --thin.archive=. --thin.classpath`
+cpchild=`java -jar ${thin_layer_dir}/thin.jar --thin.archive=. --thin.classpath --thin.parent=. --thin.profile=ext`
+
+mkdir -p ext
+for f in `echo ${cpchild#${cpparent}*} | tr ':' ' '`; do
+  cp $f ext;
+done
+
+cat > "${layers_dir}/launch.toml" << EOF
+[[processes]]
+  type = "ext"
+  command = "java -cp $CLASSPATH:ext/* $JAVA_OPTS com.example.demo.DemoApplication --management.endpoints.web.exposure.include=*"
+  direct = false
+EOF
