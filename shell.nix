@@ -8,7 +8,7 @@ pkgs.mkShell {
   shellHook = ''
     figlet ":pack:"
     echo
-    echo pack `pack version`
+    echo pack $(pack version)
     echo
 '';
 }
