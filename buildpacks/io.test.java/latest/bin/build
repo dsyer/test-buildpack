@@ -11,7 +11,7 @@ echo Layers: $layers_dir
 echo Plan: $plan
 echo $PATH
 
-thin_version="1.0.23.RELEASE"
+thin_version="1.0.25.RELEASE"
 thin_url="https://repo1.maven.org/maven2/org/springframework/boot/experimental/spring-boot-thin-launcher/${thin_version}/spring-boot-thin-launcher-${thin_version}-exec.jar"
 
 thin_layer_dir=${layers_dir}/thin
@@ -63,9 +63,14 @@ for f in `echo ${cpchild#${cpparent}*} | tr ':' ' '`; do
   cp $f ${ext_layer_dir}/lib
 done
 
+jardir=samples/${sample}/target/app
+
+main=`sed 's/\s$//' META-INF/MANIFEST.MF | sed 'N;s/\n //;P;D' | grep Start | sed -e 's/.*: //' -e 's/\s*//g'`
+echo Main class: ${main}
+
 cat > "${layers_dir}/launch.toml" << EOF
 [[processes]]
   type = "ext"
-  command = "java -cp $CLASSPATH:${ext_layer_dir}/lib/* $JAVA_OPTS com.example.demo.DemoApplication --management.endpoints.web.exposure.include=*"
+  command = "java -cp /workspace/BOOT-INF/classes:/workspace/BOOT-INF/lib/*:/workspace:${ext_layer_dir}/lib/* $JAVA_OPTS ${main} --management.endpoints.web.exposure.include=*"
   direct = false
 EOF

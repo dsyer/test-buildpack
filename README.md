@@ -3,19 +3,19 @@ Simple buildpack example. If the project is a Spring Boot project with a `pom.xm
 Set up the default builder:
 
 ```
-$ pack set-default-builder cloudfoundry/cnb:cflinuxfs3
+$ pack set-default-builder paketobuildpacks/builder:full
 ```
 
 and then build with an explicit list of buildpacks:
 
 ```
-$ pack build test -p demo --buildpack org.cloudfoundry.openjdk,org.cloudfoundry.buildsystem,org.cloudfoundry.jvmapplication,org.cloudfoundry.springboot,buildpacks/io.test.java/latest
+$ pack build test -p demo --buildpack paketo-buildpacks/bellsoft-liberica,paketo-buildpacks/executable-jar@3.1.2,paketo-buildpacks/maven@3.2.0,paketo-buildpacks/spring-boot@3.3.0,paketo-buildpacks/procfile@2.0.3,buildpacks/io.test.java/latest
 ```
 
 Or you can make a builder and use that:
 
 ```
-$ pack create-builder -b builder.toml test/java
+$ pack create-builder -c builder.toml test/java
 $ pack build --verbose test --path demo --builder test/java
 ```
 
@@ -42,7 +42,7 @@ $ docker run -p 8080:8080 test
 The default process ("web") is the same as the base builder. This buildpack adds an "ext" process with the extra Promethus bits:
 
 ```
-$ docker run -ti -p 8080:8080 test ext
+$ docker run -ti -p 8080:8080 --entrypoint ext test
 Container memory limit unset. Configuring JVM for 1G container.
 Calculated JVM Memory Configuration: -XX:MaxDirectMemorySize=10M -XX:MaxMetaspaceSize=88952K -XX:ReservedCodeCacheSize=240M -Xss1M -Xmx447623K (Head Room: 0%, Loaded Class Count: 13291, Thread Count: 250, Total Memory: 1073741824)
 

@@ -6,7 +6,7 @@ echo >&2 "Detecting Java "$*
 
 cat >> $plan <<EOF
 [[requires]]
-  name = "openjdk-jdk"
+  name = "jdk"
 EOF
 
 exit 0
