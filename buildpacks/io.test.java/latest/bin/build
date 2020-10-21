@@ -35,6 +35,8 @@ url = "${thin_url}"
 EOF
 fi
 
+THIN_JAR=${thin_layer_dir}/thin.jar
+
 if [[ ! -d $HOME/.m2 ]]; then
     m2_layer_dir="${layers_dir}/maven_m2"
     if [[ ! -d ${m2_layer_dir} ]]; then
@@ -44,33 +46,56 @@ if [[ ! -d $HOME/.m2 ]]; then
     ln -s ${m2_layer_dir} $HOME/.m2
 fi
 
-ext_layer_dir=${layers_dir}/ext
-cat > "${ext_layer_dir}.toml" << EOF
+cat > "${layers_dir}/dev.toml" << EOF
 launch = true
 EOF
-if [[ ! -f META-INF/thin-ext.properties ]]; then
-    cat > META-INF/thin-ext.properties << EOF
+if [[ ! -f META-INF/thin-dev.properties ]]; then
+    cat > META-INF/thin-dev.properties << EOF
+dependencies.spring-boot-devtools=org.springframework.boot:spring-boot-devtools
+EOF
+fi
+cat > "${layers_dir}/prod.toml" << EOF
+launch = true
+EOF
+if [[ ! -f META-INF/thin-prod.properties ]]; then
+    cat > META-INF/thin-prod.properties << EOF
 dependencies.spring-boot-actuator=org.springframework.boot:spring-boot-starter-actuator
 dependencies.prometheus=io.micrometer:micrometer-registry-prometheus
 EOF
 fi
 
-cpparent=`java -jar ${thin_layer_dir}/thin.jar --thin.archive=. --thin.classpath`
-cpchild=`java -jar ${thin_layer_dir}/thin.jar --thin.archive=. --thin.classpath --thin.parent=. --thin.profile=ext`
+echo "Installing additional jars"
 
-mkdir -p ${ext_layer_dir}/lib
-for f in `echo ${cpchild#${cpparent}*} | tr ':' ' '`; do
-  cp $f ${ext_layer_dir}/lib
-done
+CPPARENT=`java -Dthin.trace=true -jar ${THIN_JAR} --thin.archive=. --thin.classpath`
 
-jardir=samples/${sample}/target/app
+function install {
+  
+  local profile=${1:-prod}
+  local libs=${2:-${profile}}
+  echo Calculating classpath diffs for profile=${profile}
+  
+  CPCHILD=`java -Dthin.trace=true -jar ${THIN_JAR} --thin.archive=. --thin.classpath --thin.parent=. --thin.profile=${profile}`
+
+  mkdir -p ${layers_dir}/${libs}
+  for f in `echo ${CPCHILD#${CPPARENT}*} | tr ':' ' '`; do
+    cp $f ${layers_dir}/${libs};
+  done
+
+}
+
+install prod
+install dev,prod dev
 
 main=`sed 's/\s$//' META-INF/MANIFEST.MF | sed 'N;s/\n //;P;D' | grep Start | sed -e 's/.*: //' -e 's/\s*//g'`
 echo Main class: ${main}
 
 cat > "${layers_dir}/launch.toml" << EOF
 [[processes]]
-  type = "ext"
-  command = "java -cp /workspace/BOOT-INF/classes:/workspace/BOOT-INF/lib/*:/workspace:${ext_layer_dir}/lib/* $JAVA_OPTS ${main} --management.endpoints.web.exposure.include=*"
+  type = "prod"
+  command = "java -cp ./BOOT-INF/classes:./BOOT-INF/lib/*:.:${layers_dir}/prod/* $JAVA_OPTS ${main}"
+  direct = false
+[[processes]]
+  type = "dev"
+  command = "java -cp ./BOOT-INF/classes:./BOOT-INF/lib/*:.:${layers_dir}/dev/* $JAVA_OPTS ${main} --management.endpoints.web.exposure.include=*"
   direct = false
 EOF
